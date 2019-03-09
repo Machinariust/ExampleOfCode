@@ -1,0 +1,134 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+
+struct Player {
+    size_t number;
+    size_t effectiveness;
+    Player(size_t number, size_t effectiveness);
+};
+
+bool CompareByNumber(const Player& lhs, const Player& rhs);
+bool CompareByEffectiveness(const Player& lhs, const Player& rhs);
+
+template <class Iterator, class Compare>
+void Sort(Iterator first, Iterator last, Compare comp);
+
+int64_t CalcCommandEffectiveness(const std::vector<Player>& command);
+template <class Iterator>
+bool IsSolidaryCommand(Iterator first, Iterator last);
+
+std::vector<Player> BuildMostEffectiveSolidaryCommand(std::vector<Player> players);
+
+std::vector<Player> ReadPlayers();
+void PrintCommand(const std::vector<Player>& command);
+
+int main() {
+    std::vector<Player> players = ReadPlayers();
+    const auto most_effective_command = BuildMostEffectiveSolidaryCommand(players);
+    PrintCommand(most_effective_command);
+    return 0;
+}
+
+bool CompareByNumber(const Player& lhs, const Player& rhs) {
+    return lhs.number < rhs.number;
+}
+
+bool CompareByEffectiveness(const Player& lhs, const Player& rhs) {
+    return lhs.effectiveness < rhs.effectiveness;
+}
+
+template <class Iterator, class Compare>
+void Sort(Iterator first, Iterator last, Compare comp) {
+    size_t length = std::distance(first, last);
+    if (length <= 1) {
+        return;
+    }
+    auto middle = std::next(first, length / 2);
+    Sort(first, middle, comp);
+    Sort(middle, last, comp);
+    auto first_pointer = first, second_pointer = middle;
+    std::vector<typename std::iterator_traits<Iterator>::value_type > sorted;
+    while (first_pointer != middle || second_pointer != last) {
+        if (second_pointer == last ||
+            (first_pointer != middle && comp(*first_pointer, *second_pointer))) {
+            sorted.push_back(*first_pointer);
+            ++first_pointer;
+        } else {
+            sorted.push_back(*second_pointer);
+            ++second_pointer;
+        }
+    }
+    auto first_sorted = sorted.begin();
+    while (first != last) {
+        std::swap(*first, *first_sorted);
+        ++first;
+        ++first_sorted;
+    }
+}
+
+int64_t CalcCommandEffectiveness(const std::vector<Player>& command) {
+    int64_t effectiveness = 0;
+    for (size_t i = 0; i < command.size(); ++i) {
+        effectiveness += command[i].effectiveness;
+    }
+    return effectiveness;
+}
+
+bool IsSolidaryCommand(const std::vector<Player>& players, size_t left, size_t right) {
+    if (right - left <= 2) {
+        return true;
+    }
+    return players[left].effectiveness + players[left + 1].effectiveness >=
+           players[right - 1].effectiveness;
+}
+
+std::vector<Player> BuildMostEffectiveSolidaryCommand(std::vector<Player> players) {
+    std::vector<Player> command;
+    Sort(players.begin(), players.end(), CompareByEffectiveness);
+    size_t left = 0, right = 0, best_left = 0, best_right = 0;
+    int64_t best_effectivness = 0, current_effectivness = 0;
+    while (right < players.size()) {
+        if (IsSolidaryCommand(players, left, right + 1)) {
+            current_effectivness += players[right].effectiveness;
+            ++right;
+        } else {
+            current_effectivness -= players[left].effectiveness;
+            ++left;
+        }
+        if (best_effectivness < current_effectivness) {
+            best_effectivness = current_effectivness;
+            best_left = left;
+            best_right = right;
+        }
+    }
+    for (size_t i = best_left; i < best_right; ++i) {
+        command.push_back(players[i]);
+    }
+    Sort(command.begin(), command.end(), CompareByNumber);
+    return command;
+}
+
+std::vector<Player> ReadPlayers() {
+    std::vector<Player> players;
+    size_t length;
+    std::cin >> length;
+    for (size_t i = 0; i < length; ++i) {
+        size_t number = i + 1;
+        size_t effectiveness;
+        std::cin >> effectiveness;
+        players.emplace_back(number, effectiveness);
+    }
+    return players;
+}
+
+void PrintCommand(const std::vector<Player>& command) {
+    int64_t effectiveness = CalcCommandEffectiveness(command);
+    std::cout << effectiveness << std::endl;
+    for (size_t i = 0; i < command.size(); ++i) {
+        std::cout << command[i].number << ' ';
+    }
+}
+
+Player::Player(size_t number, size_t effectiveness) :
+number{number}, effectiveness{effectiveness} {}
